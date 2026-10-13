@@ -15,16 +15,38 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: auth_svc
+          POSTGRES_PASSWORD: auth_local_pw
+          POSTGRES_DB: auth_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U auth_svc -d auth_db"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://auth_svc:auth_local_pw@localhost:5432/auth_db
+      SHADOW_DATABASE_URL: postgresql://auth_svc:auth_local_pw@localhost:5432/auth_shadow
+      TEST_DATABASE_URL: postgresql://auth_svc:auth_local_pw@localhost:5432/auth_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci                      # postinstall runs `prisma generate`
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      - name: Migrations apply cleanly to an empty database
+        run: npm run db:deploy
+      - name: schema.prisma has no changes missing a migration
+        run: |
+          psql "postgresql://auth_svc:auth_local_pw@localhost:5432/postgres" -c "CREATE DATABASE auth_shadow"
+          npm run db:check-drift
+      - name: Unit + integration tests (also checks openapi/openapi.json is current)
+        run: npm test
       - run: npm run build
 
   docker:
@@ -33,11 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build image (not pushed until Phase 7)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          tags: ecommerce-auth-service:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build runtime and migrate images (not pushed until Phase 7)
+        run: |
+          docker buildx build --target runtime -t ecommerce-auth-service:${{ github.sha }} --load .
+          docker buildx build --target migrate -t ecommerce-auth-service-migrate:${{ github.sha }} --load .

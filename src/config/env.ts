@@ -1,23 +1,64 @@
 import { z } from "zod";
 
+const bool = z.enum(["true", "false"]).transform((v) => v === "true");
+
 // All configuration comes from environment variables and is validated once at
 // startup. The process refuses to boot with invalid config, rather than failing
 // later on the first request that touches it.
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().min(1).max(65535).default(4001),
-  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
-  CORS_ALLOWED_ORIGINS: z
-    .string()
-    .default("http://localhost:5173")
-    .transform((value) =>
-      value
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean),
-    ),
-  SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
-});
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().int().min(1).max(65535).default(4001),
+    LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+    CORS_ALLOWED_ORIGINS: z
+      .string()
+      .default("http://localhost:5173")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean),
+      ),
+    SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+    /// Number of reverse-proxy hops to trust for X-Forwarded-For (1 behind an ALB, 0 locally).
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+
+    DATABASE_URL: z.string().startsWith("postgresql://"),
+
+    JWT_ISSUER: z.string().default("ecommerce-auth-service"),
+    JWT_AUDIENCE: z.string().default("ecommerce-api"),
+    JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+    /// Directory of RSA private keys (<kid>.pem). The newest file signs; all are published in JWKS.
+    JWT_KEYS_DIR: z.string().default("./keys"),
+
+    REFRESH_TOKEN_IDLE_DAYS: z.coerce.number().int().min(1).default(7),
+    SESSION_ABSOLUTE_DAYS: z.coerce.number().int().min(1).default(30),
+    COOKIE_SECURE: bool.default(true),
+    /// Set in production so the CSRF cookie is readable by the storefront subdomain.
+    COOKIE_DOMAIN: z.string().optional(),
+
+    EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).default(48),
+    PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).default(30),
+    /// Base URL of the storefront, used to build links in emails.
+    FRONTEND_BASE_URL: z.url().default("http://localhost:5173"),
+
+    /// http: Notification Service (Phase 4). smtp-dev: straight to Mailpit (local only).
+    NOTIFICATION_DELIVERY: z.enum(["http", "smtp-dev", "disabled"]).default("smtp-dev"),
+    NOTIFICATION_SERVICE_URL: z.url().default("http://localhost:4006"),
+    SMTP_HOST: z.string().default("localhost"),
+    SMTP_PORT: z.coerce.number().int().default(1025),
+    EMAIL_FROM: z.string().default("Shop <no-reply@shop.local>"),
+
+    RATE_LIMIT_ENABLED: bool.default(true),
+  })
+  .refine((env) => !(env.NODE_ENV === "production" && env.NOTIFICATION_DELIVERY === "smtp-dev"), {
+    message: "NOTIFICATION_DELIVERY=smtp-dev is for local development only",
+    path: ["NOTIFICATION_DELIVERY"],
+  })
+  .refine((env) => !(env.NODE_ENV === "production" && !env.COOKIE_SECURE), {
+    message: "COOKIE_SECURE must be true in production",
+    path: ["COOKIE_SECURE"],
+  });
 
 export type Env = z.infer<typeof EnvSchema>;
 
