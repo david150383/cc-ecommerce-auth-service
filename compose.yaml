@@ -1,0 +1,20 @@
+# Standalone dependencies for working on this service alone.
+# The full platform environment lives in ecommerce-infrastructure.
+name: ecommerce-auth-service
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: auth_svc
+      POSTGRES_PASSWORD: auth_local_pw
+      POSTGRES_DB: auth_db
+    ports: ["5441:5432"]
+    volumes: ["auth-pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_svc -d auth_db"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  auth-pg:
