@@ -331,6 +331,54 @@
           "reason"
         ],
         "additionalProperties": false
+      },
+      "ServiceTokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string",
+            "enum": [
+              "Bearer"
+            ]
+          },
+          "expiresIn": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresIn"
+        ]
+      },
+      "ServiceTokenRequest": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "clientSecret": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "audience": {
+            "type": "string",
+            "pattern": "^ecommerce-[a-z-]+$",
+            "example": "ecommerce-product-service"
+          }
+        },
+        "required": [
+          "clientId",
+          "clientSecret",
+          "audience"
+        ],
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -920,6 +968,65 @@
           },
           "409": {
             "description": "CANNOT_CHANGE_OWN_STATUS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/auth/service-token": {
+      "post": {
+        "tags": [
+          "internal"
+        ],
+        "summary": "Client-credentials grant: a short-lived token for ONE target service (internal network only)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_CLIENT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "AUDIENCE_NOT_ALLOWED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
             "content": {
               "application/problem+json": {
                 "schema": {

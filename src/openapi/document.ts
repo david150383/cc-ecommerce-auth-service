@@ -1,6 +1,7 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry, type RouteConfig } from "@asteasolutions/zod-to-openapi";
 import { z } from "../lib/zod.js";
 import { ListUsersQuery, ListUsersResponse, UpdateUserStatusRequest } from "../modules/admin/admin.schemas.js";
+import { ServiceTokenRequest, ServiceTokenResponse } from "../modules/internal/service-token.js";
 import {
   ForgotPasswordRequest,
   LoginRequest,
@@ -108,6 +109,12 @@ export function buildOpenApiDocument() {
       method: "patch", path: "/api/v1/admin/users/{userId}/status", tags: ["admin"], summary: "Suspend or activate a user", security: secured,
       request: { params: z.object({ userId: z.uuid() }), body: { content: { "application/json": { schema: UpdateUserStatusRequest } } } },
       responses: { 200: json(UserResponse, "Updated"), 403: problem("FORBIDDEN"), 404: problem("NOT_FOUND"), 409: problem("CANNOT_CHANGE_OWN_STATUS") },
+    },
+    {
+      method: "post", path: "/internal/v1/auth/service-token", tags: ["internal"],
+      summary: "Client-credentials grant: a short-lived token for ONE target service (internal network only)",
+      request: { body: { content: { "application/json": { schema: ServiceTokenRequest } } } },
+      responses: { 200: json(ServiceTokenResponse, "Issued"), 401: problem("INVALID_CLIENT"), 403: problem("AUDIENCE_NOT_ALLOWED"), 429: problem("RATE_LIMITED") },
     },
     {
       method: "get", path: "/.well-known/jwks.json", tags: ["keys"], summary: "Public keys for verifying access tokens",

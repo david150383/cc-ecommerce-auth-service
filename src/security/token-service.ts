@@ -30,7 +30,11 @@ export class TokenService {
   }
 
   /** Short-lived, stateless access token. Other services verify it with the JWKS. */
-  issueAccessToken(claims: AccessTokenClaims, audience = this.config.audience): Promise<string> {
+  issueAccessToken(
+    claims: AccessTokenClaims,
+    audience = this.config.audience,
+    ttlSeconds = this.config.accessTtlSeconds,
+  ): Promise<string> {
     const { kid, privateKey } = this.keys.signingKey;
     return new SignJWT({ roles: claims.roles, ...(claims.sid && { sid: claims.sid }) })
       .setProtectedHeader({ alg: SIGNING_ALG, kid, typ: "JWT" })
@@ -39,7 +43,7 @@ export class TokenService {
       .setSubject(claims.sub)
       .setJti(newId())
       .setIssuedAt()
-      .setExpirationTime(`${this.config.accessTtlSeconds}s`)
+      .setExpirationTime(`${ttlSeconds}s`)
       .sign(privateKey);
   }
 

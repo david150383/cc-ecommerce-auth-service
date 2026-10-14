@@ -14,6 +14,7 @@ import { adminRouter } from "./modules/admin/admin.routes.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { AuthService } from "./modules/auth/auth.service.js";
+import { serviceTokenRouter } from "./modules/internal/service-token.js";
 import type { TransactionalNotifier } from "./notifications/notifier.js";
 import { buildOpenApiDocument } from "./openapi/document.js";
 import { healthRouter, type ReadinessCheck } from "./routes/health.js";
@@ -82,6 +83,7 @@ export function createApp({ env, logger, db, keys, notifier, readinessChecks = [
 
   app.use("/api/v1/auth", authRouter({ auth, tokens, env, limits }));
   app.use("/api/v1/admin", adminRouter({ admin, tokens }));
+  app.use("/internal/v1/auth", serviceTokenRouter({ env, tokens, db, limits }));
 
   app.use(notFoundHandler);
   app.use(errorHandler(logger));

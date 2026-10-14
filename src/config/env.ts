@@ -2,6 +2,33 @@ import { z } from "zod";
 
 const bool = z.enum(["true", "false"]).transform((v) => v === "true");
 
+/**
+ * Service clients for the client-credentials grant. Only the SHA-256 of each secret is
+ * configured (secrets are 256-bit random values, so a fast hash is appropriate, as for
+ * refresh tokens). In production this JSON comes from AWS Secrets Manager.
+ * Generate an entry with `npm run service-client:create -- <clientId> <audience>...`.
+ */
+const ServiceClients = z
+  .string()
+  .default("[]")
+  .transform((raw, ctx) => {
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      ctx.addIssue({ code: "custom", message: "SERVICE_CLIENTS must be valid JSON" });
+      return z.NEVER;
+    }
+  })
+  .pipe(
+    z.array(
+      z.object({
+        clientId: z.string().regex(/^ecommerce-[a-z-]+$/),
+        secretSha256: z.string().regex(/^[0-9a-f]{64}$/),
+        audiences: z.array(z.string().regex(/^ecommerce-[a-z-]+$/)).min(1),
+      }),
+    ),
+  );
+
 // All configuration comes from environment variables and is validated once at
 // startup. The process refuses to boot with invalid config, rather than failing
 // later on the first request that touches it.
@@ -30,6 +57,8 @@ const EnvSchema = z
     JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     /// Directory of RSA private keys (<kid>.pem). The newest file signs; all are published in JWKS.
     JWT_KEYS_DIR: z.string().default("./keys"),
+    SERVICE_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
+    SERVICE_CLIENTS: ServiceClients,
 
     REFRESH_TOKEN_IDLE_DAYS: z.coerce.number().int().min(1).default(7),
     SESSION_ABSOLUTE_DAYS: z.coerce.number().int().min(1).default(30),

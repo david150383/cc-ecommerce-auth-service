@@ -48,7 +48,9 @@ export type AuditAction =
   | "PASSWORD_RESET_REQUESTED"
   | "PASSWORD_RESET"
   | "USER_SUSPENDED"
-  | "USER_ACTIVATED";
+  | "USER_ACTIVATED"
+  | "SERVICE_TOKEN_ISSUED"
+  | "SERVICE_TOKEN_DENIED";
 
 export function toUserDto(user: User): UserDtoT {
   return {
