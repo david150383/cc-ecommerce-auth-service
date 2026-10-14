@@ -83,7 +83,7 @@ instances. Behind a load balancer, set `TRUST_PROXY_HOPS=1` so the client IP is 
 `{ "email": "..." }` returns **202 always**, whether or not the account exists (no account
 enumeration). The lookup and email happen **after** the response is sent, so response time does
 not reveal whether the account exists either. Requesting a new link invalidates older ones. The link is
-delivered via Notification's internal REST endpoint (Phase 4; Mailpit directly until then), never via a queue.
+delivered via the Notification Service's internal REST endpoint (`NOTIFICATION_DELIVERY=http`; `smtp-dev` sends straight to Mailpit when working on Auth alone, refused in production), never via a queue.
 
 ### POST /api/v1/auth/reset-password
 `{ "token": "...", "newPassword": "..." }` returns 204. The token is single-use and expires
