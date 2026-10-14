@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { loadEnv } from "./config/env.js";
 import { createPrisma } from "./db/prisma.js";
 import { createLogger } from "./lib/logger.js";
+import { createSns, OutboxRelay } from "./messaging/outbox-relay.js";
 import { createNotifier } from "./notifications/create-notifier.js";
 import { loadKeyStore } from "./security/key-store.js";
 import { TokenService } from "./security/token-service.js";
@@ -21,6 +22,10 @@ const notifier = createNotifier(
       accessTtlSeconds: env.JWT_ACCESS_TTL_SECONDS,
     }),
 );
+
+const relay = new OutboxRelay(db, createSns(env), env.EVENTS_TOPIC_ARN, env.OUTBOX_POLL_INTERVAL_MS, logger);
+if (env.MESSAGING_ENABLED) relay.start();
+else logger.warn("messaging disabled: outbox rows accumulate until it is enabled");
 
 let shuttingDown = false;
 
@@ -53,14 +58,18 @@ function shutdown(signal: NodeJS.Signals): void {
   logger.info({ signal }, "shutdown started");
 
   server.close((err) => {
-    void db.$disconnect().finally(() => {
-      if (err) {
-        logger.error({ err }, "error while closing server");
-        process.exit(1);
-      }
-      logger.info("shutdown complete");
-      process.exit(0);
-    });
+    // Let the relay finish its current batch before closing the database it uses.
+    void relay
+      .stop()
+      .then(() => db.$disconnect())
+      .finally(() => {
+        if (err) {
+          logger.error({ err }, "error while closing server");
+          process.exit(1);
+        }
+        logger.info("shutdown complete");
+        process.exit(0);
+      });
   });
   server.closeIdleConnections();
 

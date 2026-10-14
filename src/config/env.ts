@@ -79,6 +79,14 @@ const EnvSchema = z
     EMAIL_FROM: z.string().default("Shop <no-reply@shop.local>"),
 
     RATE_LIMIT_ENABLED: bool.default(true),
+
+    // Messaging (SNS). Disabled: the service still works; outbox rows accumulate until enabled.
+    MESSAGING_ENABLED: bool.default(false),
+    AWS_REGION: z.string().default("us-east-1"),
+    /// Local emulator (Floci). Unset in AWS.
+    AWS_ENDPOINT_URL: z.url().optional(),
+    EVENTS_TOPIC_ARN: z.string().default("arn:aws:sns:us-east-1:000000000000:local-ecommerce-auth-events"),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(50).default(1_000),
   })
   .refine((env) => !(env.NODE_ENV === "production" && env.NOTIFICATION_DELIVERY === "smtp-dev"), {
     message: "NOTIFICATION_DELIVERY=smtp-dev is for local development only",

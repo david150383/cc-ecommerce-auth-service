@@ -10,8 +10,11 @@ The envelope is described in `ecommerce-infrastructure/docs/architecture/convent
 | `UserRegistered` v1 | SNS `auth-events` | Notification (welcome email, recipient directory) | After the user row commits | Consumers dedupe on `messageId` |
 | `UserEmailVerified` v1 | SNS `auth-events` | Notification | After the verification token is consumed | Consumers dedupe on `messageId` |
 
-Published through a transactional outbox (Phase 3). The outbox row is written in the same
-transaction as the user change.
+Published through a transactional outbox: the row is written in the same transaction as the user change,
+and the relay (`src/messaging/outbox-relay.ts`, enabled by `MESSAGING_ENABLED`) publishes committed rows to
+`EVENTS_TOPIC_ARN` with the `messageType` attribute. Rows are claimed `FOR UPDATE SKIP LOCKED`, so several
+instances can relay; a failed publish leaves the row for the next tick (at-least-once). Tested against Floci:
+schema-valid output, retry after an SNS outage, two racing relays publishing each row once.
 
 ## Deliberately NOT events
 
