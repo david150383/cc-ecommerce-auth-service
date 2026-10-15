@@ -6,9 +6,10 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { pino } from "pino";
 import request from "supertest";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { OutboxRelay } from "../src/messaging/outbox-relay.js";
 import { buildTestContext, resetDatabase, STRONG_PASSWORD, testDb } from "./helpers.js";
+import { deleteTestQueues, deleteTestTopics } from "./test-cleanup.js";
 
 // Runs against the local AWS emulator (Floci), like the DB tests run against Postgres.
 const endpoint = process.env.TEST_AWS_ENDPOINT_URL ?? "http://localhost:4566";
@@ -21,14 +22,18 @@ const silent = pino({ level: "silent" });
 let topicArn: string;
 let probeUrl: string;
 
+const id = Date.now().toString(36);
 beforeAll(async () => {
-  const id = Date.now().toString(36);
   topicArn = (await sns.send(new CreateTopicCommand({ Name: `test-auth-${id}-events` }))).TopicArn!;
   probeUrl = (await sqs.send(new CreateQueueCommand({ QueueName: `test-auth-${id}-probe` }))).QueueUrl!;
   const { Attributes } = await sqs.send(new GetQueueAttributesCommand({ QueueUrl: probeUrl, AttributeNames: ["QueueArn"] }));
   await sns.send(
     new SubscribeCommand({ TopicArn: topicArn, Protocol: "sqs", Endpoint: Attributes!.QueueArn!, Attributes: { RawMessageDelivery: "true" } }),
   );
+});
+afterAll(async () => {
+  await deleteTestTopics(sns, `test-auth-${id}-`);
+  await deleteTestQueues(sqs, `test-auth-${id}-`);
 });
 
 beforeEach(async () => {
