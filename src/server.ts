@@ -4,14 +4,15 @@ import { createPrisma } from "./db/prisma.js";
 import { createLogger } from "./lib/logger.js";
 import { createSns, OutboxRelay } from "./messaging/outbox-relay.js";
 import { createNotifier } from "./notifications/create-notifier.js";
-import { loadKeyStore } from "./security/key-store.js";
+import { loadSigningKeys } from "./security/key-store.js";
 import { TokenService } from "./security/token-service.js";
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
 const db = createPrisma(env.DATABASE_URL);
-// Development convenience: create a signing key on first run. Production must provide keys.
-const keys = await loadKeyStore(env.JWT_KEYS_DIR, { generateIfMissing: env.NODE_ENV !== "production" });
+// Production: keys come from JWT_SIGNING_KEYS (secret store) or a mounted directory. Development
+// convenience: a key is generated on first run.
+const keys = await loadSigningKeys(env, { generateIfMissing: env.NODE_ENV !== "production" });
 const notifier = createNotifier(
   env,
   logger,

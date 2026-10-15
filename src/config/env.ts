@@ -57,6 +57,23 @@ const EnvSchema = z
     JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     /// Directory of RSA private keys (<kid>.pem). The newest file signs; all are published in JWKS.
     JWT_KEYS_DIR: z.string().default("./keys"),
+    /// Alternative for containers without a persistent disk (ECS): the keys as JSON
+    /// [{"kid": "...", "pem": "-----BEGIN PRIVATE KEY-----..."}], injected from a secret store. Takes
+    /// precedence over JWT_KEYS_DIR. Rotate by adding a newer kid, deploying, and removing the old one
+    /// only after its last tokens expired.
+    JWT_SIGNING_KEYS: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        if (v === undefined) return undefined;
+        try {
+          const parsed = z.array(z.object({ kid: z.string().regex(/^[A-Za-z0-9._-]{1,64}$/), pem: z.string().includes("PRIVATE KEY") })).min(1).parse(JSON.parse(v));
+          return parsed;
+        } catch {
+          ctx.addIssue({ code: "custom", message: 'JWT_SIGNING_KEYS must be JSON: [{"kid": "...", "pem": "-----BEGIN PRIVATE KEY-----..."}]' });
+          return z.NEVER;
+        }
+      }),
     SERVICE_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
     SERVICE_CLIENTS: ServiceClients,
 

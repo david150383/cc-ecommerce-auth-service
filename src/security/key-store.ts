@@ -58,6 +58,12 @@ export async function generatePrivateKeyPem(): Promise<string> {
  * Loads <kid>.pem files from a directory. If the directory has no keys and
  * `generateIfMissing` is set (development only), creates one so `npm run dev` just works.
  */
+/** Keys from JWT_SIGNING_KEYS when given (secret store), else from the directory. */
+export async function loadSigningKeys(env: { JWT_SIGNING_KEYS?: { kid: string; pem: string }[]; JWT_KEYS_DIR: string }, opts: { generateIfMissing: boolean }): Promise<KeyStore> {
+  if (env.JWT_SIGNING_KEYS) return KeyStore.fromPems(env.JWT_SIGNING_KEYS);
+  return loadKeyStore(env.JWT_KEYS_DIR, opts);
+}
+
 export async function loadKeyStore(dir: string, opts: { generateIfMissing: boolean }): Promise<KeyStore> {
   await mkdir(dir, { recursive: true, mode: 0o700 });
   let files = (await readdir(dir)).filter((f) => f.endsWith(".pem"));

@@ -167,3 +167,26 @@ describe("logout", () => {
     expect((await refresh(b)).status).toBe(401);
   });
 });
+
+const requiredEnv = () => ({ DATABASE_URL: "postgresql://u:p@localhost:5432/db" });
+
+describe("signing keys from a secret store (JWT_SIGNING_KEYS)", () => {
+  it("loads keys from the env JSON, signs with the newest kid, and publishes all", async () => {
+    const { loadEnv } = await import("../src/config/env.js");
+    const { loadSigningKeys } = await import("../src/security/key-store.js");
+    const json = JSON.stringify([
+      { kid: "2026-01-01", pem: await generatePrivateKeyPem() },
+      { kid: "2026-10-01", pem: await generatePrivateKeyPem() },
+    ]);
+    const env = loadEnv({ ...requiredEnv(), JWT_SIGNING_KEYS: json, JWT_KEYS_DIR: "/nonexistent" });
+    const keys = await loadSigningKeys(env, { generateIfMissing: false });
+    expect(keys.signingKey.kid).toBe("2026-10-01");
+    expect(keys.jwks().keys.map((k) => k.kid)).toEqual(["2026-01-01", "2026-10-01"]);
+  });
+
+  it("refuses malformed key JSON at startup", async () => {
+    const { loadEnv } = await import("../src/config/env.js");
+    expect(() => loadEnv({ ...requiredEnv(), JWT_SIGNING_KEYS: "not json" })).toThrow(/JWT_SIGNING_KEYS must be JSON/);
+    expect(() => loadEnv({ ...requiredEnv(), JWT_SIGNING_KEYS: JSON.stringify([{ kid: "../etc", pem: "x" }]) })).toThrow(/JWT_SIGNING_KEYS/);
+  });
+});
