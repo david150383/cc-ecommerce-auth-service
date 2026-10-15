@@ -9,7 +9,7 @@
     "ecommerce-notification-service"
   ],
   "x-channel": "SNS auth-events",
-  "$ref": "envelope.v1.schema.json",
+  "$ref": "../common/envelope.v1.schema.json",
   "properties": {
     "messageKind": {
       "const": "event"

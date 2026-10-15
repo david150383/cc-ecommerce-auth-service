@@ -1,0 +1,17 @@
+{
+  "source": "ecommerce-contracts",
+  "version": "v1.0.0",
+  "commit": "2820581f413c93db7ccd90c6411fe2d125736d1d",
+  "service": "auth-service",
+  "directories": [
+    "events/schemas",
+    "events/examples"
+  ],
+  "files": {
+    "events/examples/user-email-verified.v1.json": "e5a907342c954187c396d0eadbc1cc19b37868521a6d87857f5501b01709f38f",
+    "events/examples/user-registered.v1.json": "172ce4169a83a85aca1de60faed4aaf8e65e510bd42bb1246c04706b63151256",
+    "events/schemas/envelope.v1.schema.json": "773577105e1a89528f466579fd827da24313ff0f6a8edcd248358a0163e53d5a",
+    "events/schemas/user-email-verified.v1.schema.json": "04c21886460f9f38f1a208aa031a57d57590afead6a9b7e50fb492bdc02635a1",
+    "events/schemas/user-registered.v1.schema.json": "7b5fb84ee69083963c5f6ddab7facdcdd683b79bb1d3ac8e7599f0ca98942280"
+  }
+}

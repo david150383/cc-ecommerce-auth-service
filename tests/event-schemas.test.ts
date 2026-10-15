@@ -1,11 +1,12 @@
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
 
-// Every message schema this service owns must compile, and every example in
-// events/examples must validate against the schema with the same base name.
+// Every message schema vendored from ecommerce-contracts (owned, sent or received) must compile,
+// and every example in events/examples must validate against the schema with the same base name.
 const schemasDir = join(import.meta.dirname, "..", "events", "schemas");
 const examplesDir = join(import.meta.dirname, "..", "events", "examples");
 
@@ -40,5 +41,11 @@ describe("event and command schemas", () => {
     const example = JSON.parse(readFileSync(join(examplesDir, file.replace(".schema.json", ".json")), "utf8"));
     delete example.messageId;
     expect(validate(example)).toBe(false);
+  });
+});
+
+describe("pinned contracts (ecommerce-contracts)", () => {
+  it("vendored schemas and examples match contracts.lock.json (no hand edits)", () => {
+    expect(() => execFileSync(process.execPath, [join(import.meta.dirname, "..", "scripts", "verify-contracts.mjs"), join(import.meta.dirname, "..")], { stdio: "pipe" })).not.toThrow();
   });
 });
